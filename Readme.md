@@ -8,9 +8,16 @@ A simple&basic text filter that is under censor of GFW, with DFA.
 
 ### Usage
 
-    var tc = require('text-censor')
-    tc.filter('Ur so sexy babe!',function(err, censored){
-        console.log(censored) // 'Ur so ***y babe!'
+    const TextCensor = require('text-censor')
+    const tc = new TextCensor()
+
+    // or
+    // const tc = new TextCensor(keywordsPath)
+
+    tc.init(_ => {
+        // ready
+        
+        console.log(tc.filter('Ur so sexy babe!')) // 'Ur so ***y babe!'
     })
 
 If you want to add key words of your own, simply add them to the end of 'keywords' file, one word per line.

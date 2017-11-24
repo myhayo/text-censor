@@ -14,7 +14,7 @@ class TextCensor {
     /**
      * 初始化
      */
-    init() {
+    init(cb) {
         return new Promise(resolve => {
             if (this.initialized) {
                 throw '已初始化过';
@@ -32,6 +32,7 @@ class TextCensor {
             lineReader.on('close', _ => {
                 this.initialized = true;
                 resolve();
+                cb && cb();
             });
         });
     }
