@@ -1,85 +1,115 @@
-var fs = require('fs')
+const fs = require('fs');
+const path = __dirname + '/keywords';
 
-var path = __dirname + '/keywords'
+/**
+ * 文本过滤类
+ */
+class TextCensor {
+    constructor(keywordPath = path) {
+        this.initialized = false;
+        this.keywordPath = keywordPath;
+        this.map = {};
+    }
 
-var map = {}
+    /**
+     * 初始化
+     */
+    init() {
+        return new Promise(resolve => {
+            if (this.initialized) {
+                throw '已初始化过';
+            }
 
-var lineReader = require('readline').createInterface({
-  input: require('fs').createReadStream(path, {encoding: 'UTF-8'})
-});
+            let lineReader = require('readline').createInterface({
+                input: require('fs').createReadStream(this.keywordPath, { encoding: 'UTF-8' })
+            });
 
-lineReader.on('line', function (line) {
-  if(!line) return
-  addWord(line)
-});
+            lineReader.on('line', line => {
+                if (!line) return;
+                this.addWord(line);
+            });
 
-function addWord(word) {
+            lineReader.on('close', _ => {
+                this.initialized = true;
+                resolve();
+            });
+        });
+    }
 
-  var parent = map
+    /**
+     * 添加文本
+     * @param {string} word 
+     */
+    addWord(word) {
+        let parent = this.map;
 
-  for (var i = 0; i < word.length; i++) {
-    if (!parent[word[i]]) parent[word[i]] = {}
-    parent = parent[word[i]]
-  }
-  parent.isEnd = true
+        for (let i = 0; i < word.length; i++) {
+            if (!parent[word[i]]) parent[word[i]] = {};
+            parent = parent[word[i]];
+        }
+
+        parent.isEnd = true;
+    }
+
+    /**
+     * 过滤
+     * @param {string} s 
+     */
+    filter(s) {
+        if (!this.initialized) {
+            throw '未完成初始化';
+        }
+
+        let parent = this.map;
+
+        for (let i = 0; i < s.length; i++) {
+            if (s[i] == '*') {
+                continue;
+            }
+
+            let found = false;
+            let skip = 0;
+            let sWord = '';
+
+            for (let j = i; j < s.length; j++) {
+
+                if (!parent[s[j]]) {
+                    // console.log('skip ', s[j])
+                    found = false;
+                    skip = j - i;
+                    parent = this.map;
+                    break;
+                }
+
+                sWord = sWord + s[j];
+                if (parent[s[j]].isEnd) {
+                    found = true;
+                    skip = j - i;
+                    break;
+                }
+                parent = parent[s[j]];
+            }
+
+            if (skip > 1) {
+                i += skip - 1;
+            }
+
+            if (!found) {
+                continue;
+            }
+
+            let stars = '*';
+            for (let k = 0; k < skip; k++) {
+                stars = stars + '*';
+            }
+
+            let reg = new RegExp(sWord, 'g');
+            s = s.replace(reg, stars);
+
+        }
+
+        return s;
+    }
 }
 
-function filter(s, cb) {
-  var parent = map
-
-  for (var i = 0; i < s.length; i++) {
-    if (s[i] == '*') {
-      continue
-    }
-
-    var found = false
-    var skip = 0
-    var sWord = ''
-
-    for (var j = i; j < s.length; j++) {
-
-      if (!parent[s[j]]) {
-        // console.log('skip ', s[j])
-        found = false
-        skip = j - i
-        parent = map
-        break;
-      }
-
-      sWord = sWord + s[j]
-      if (parent[s[j]].isEnd) {
-        found = true
-        skip = j - i
-        break
-      }
-      parent = parent[s[j]]
-    }
-
-    if (skip > 1) {
-      i += skip - 1
-    }
-
-    if (!found) {
-      continue
-    }
-
-    var stars = '*'
-    for (var k = 0; k < skip; k++) {
-      stars = stars + '*'
-    }
-
-    var reg = new RegExp(sWord, 'g')
-    s = s.replace(reg, stars)
-
-  }
-
-  if(typeof cb === 'function'){
-    cb(null, s)
-  }
-
-  return s
-}
-
-module.exports = {
-  filter: filter
-}
+module.exports = TextCensor;
